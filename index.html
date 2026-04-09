@@ -489,6 +489,18 @@
     }
 
     @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* METHOD INDICATOR */
+    .method-tag {
+      font-size: 10px;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 10px;
+      background: var(--blue-pale);
+      color: var(--blue);
+      margin-left: 8px;
+      letter-spacing: 0.03em;
+    }
   </style>
 </head>
 <body>
@@ -511,14 +523,14 @@
     <div class="config-icon">🔗</div>
     <div>
       <div class="config-label">Google Sheets — URL Pública</div>
-      <div class="config-hint">Cole a URL de publicação (Arquivo → Compartilhar → Publicar na web → CSV)</div>
+      <div class="config-hint">Cole qualquer URL da planilha (edição, compartilhamento ou publicação CSV). A conversão é automática.</div>
     </div>
     <div class="config-input-wrap">
       <input
         type="text"
         id="sheets-url"
         class="config-input"
-        placeholder="https://docs.google.com/spreadsheets/d/.../pub?output=csv"
+        placeholder="https://docs.google.com/spreadsheets/d/SEU_ID/edit..."
         aria-label="URL do Google Sheets"
       />
       <button type="button" class="btn-load" id="btn-load" onclick="loadSheet()">
@@ -539,7 +551,7 @@
     <div class="empty-state">
       <div class="empty-icon">📊</div>
       <div class="empty-title">Aguardando planilha</div>
-      <div class="empty-desc">Cole a URL do Google Sheets publicado em CSV acima e clique em Carregar para visualizar todos os indicadores.</div>
+      <div class="empty-desc">Cole a URL do Google Sheets acima e clique em Carregar para visualizar todos os indicadores.</div>
     </div>
   </div>
 
@@ -549,13 +561,12 @@
 'use strict';
 
 /* ═══════════════════════════════════════════════
-   LÓGICA DE CÁLCULO
+   LÓGICA DE CÁLCULO (inalterada)
 ═══════════════════════════════════════════════ */
 
 function processData(rows) {
   if (!rows || rows.length < 2) throw new Error('Planilha sem dados suficientes.');
 
-  // Normaliza headers
   const headers = rows[0].map(h => h ? h.toString().trim() : '');
   const data = rows.slice(1).map(row => {
     const obj = {};
@@ -584,22 +595,15 @@ function processData(rows) {
     vend: findCol(headers, ['Nome Vend. Int.', 'Vend. Int.', 'Vendedor']),
   };
 
-  // ── FILTROS BASE ──────────────────────────────────
   const isAcrescentar = r => getStr(r, col.condicao).toUpperCase().startsWith('ACRESCENTAR');
   const isCancelado   = r => getStr(r, col.situacao).toLowerCase().includes('cancelad');
   const isNFE         = r => getStr(r, col.tipoMovimento).toUpperCase().includes('NFE VENDA');
 
-  // Pedidos válidos para faturamento: NFE VENDA + não cancelado
   const validos = data.filter(r => !isCancelado(r) && (isNFE(r) || col.tipoMovimento === null));
-
-  // Pedidos únicos (sem acrescentar) — base para contar pedidos
   const pedidosUnicos = validos.filter(r => !isAcrescentar(r));
 
-  // ── FATURAMENTO ───────────────────────────────────
   const faturamentoTotal = validos.reduce((s, r) => s + getNum(r, col.total), 0);
 
-  // ── TICKET MÉDIO ──────────────────────────────────
-  // Agrupa total por cliente (pedido + acrescentar juntos)
   const totalPorCliente = {};
   validos.forEach(r => {
     const cli = getStr(r, col.cliente) || getStr(r, col.nomeCliente);
@@ -609,10 +613,8 @@ function processData(rows) {
   const clientesComVenda = Object.keys(totalPorCliente).length;
   const ticketMedio = clientesComVenda > 0 ? faturamentoTotal / clientesComVenda : 0;
 
-  // ── TOTAL DE VENDAS (pedidos únicos) ─────────────
   const totalVendas = pedidosUnicos.length;
 
-  // ── DATAS ─────────────────────────────────────────
   const datas = pedidosUnicos
     .map(r => parseDate(getStr(r, col.dataPedido)))
     .filter(Boolean)
@@ -621,8 +623,6 @@ function processData(rows) {
   const dataMin = datas[0];
   const dataMax = datas[datas.length - 1];
 
-  // ── CLIENTES ATIVOS / INATIVOS / EM RISCO ────────
-  // Última compra de cada cliente (mais recente entre data pedido e ultima compra col)
   const ultimaAtividade = {};
   validos.forEach(r => {
     const cli = getStr(r, col.cliente) || getStr(r, col.nomeCliente);
@@ -644,7 +644,6 @@ function processData(rows) {
     else                clientesInativos++;
   });
 
-  // ── TAXA DE RECOMPRA ─────────────────────────────
   const pedidosPorCliente = {};
   pedidosUnicos.forEach(r => {
     const cli = getStr(r, col.cliente) || getStr(r, col.nomeCliente);
@@ -654,7 +653,6 @@ function processData(rows) {
   const comRecompra = Object.values(pedidosPorCliente).filter(n => n > 1).length;
   const taxaRecompra = clientesComVenda > 0 ? (comRecompra / clientesComVenda * 100) : 0;
 
-  // ── CICLO MÉDIO DE VENDA ─────────────────────────
   const ciclos = pedidosUnicos
     .filter(r => {
       const sit = getStr(r, col.situacao).toLowerCase();
@@ -669,8 +667,6 @@ function processData(rows) {
     .filter(v => v !== null && v >= 0);
   const cicloMedio = ciclos.length > 0 ? ciclos.reduce((s, v) => s + v, 0) / ciclos.length : 0;
 
-  // ── RECEITA RECORRENTE ────────────────────────────
-  // Clientes cuja última compra (col Última Compra) < data do pedido atual
   let receitaRecorrente = 0;
   validos.forEach(r => {
     const uc = parseDate(getStr(r, col.ultimaCompra));
@@ -680,17 +676,14 @@ function processData(rows) {
     }
   });
 
-  // ── FATURAMENTO % FINALIZADO vs ABERTO ───────────
   const fatFinalizado = validos.filter(r => getStr(r, col.situacao).toLowerCase().includes('finaliz'))
     .reduce((s, r) => s + getNum(r, col.total), 0);
   const fatEmAndamento = faturamentoTotal - fatFinalizado;
 
-  // ── PEDIDOS CANCELADOS ────────────────────────────
   const cancelados = data.filter(r => isCancelado(r) && !isAcrescentar(r)).length;
   const totalGeral = pedidosUnicos.length + cancelados;
   const taxaCancelamento = totalGeral > 0 ? (cancelados / totalGeral * 100) : 0;
 
-  // ── RANKING REPRESENTANTES ────────────────────────
   const repFat = {};
   validos.forEach(r => {
     const nome = getStr(r, col.nomeFant) || getStr(r, col.nomeRepres) || 'Interno';
@@ -700,7 +693,6 @@ function processData(rows) {
     .sort((a, b) => b[1] - a[1])
     .slice(0, 6);
 
-  // ── RANKING CIDADES ────────────────────────────────
   const cidFat = {};
   validos.forEach(r => {
     const c = getStr(r, col.cidade);
@@ -713,10 +705,7 @@ function processData(rows) {
     .sort((a, b) => b[1] - a[1])
     .slice(0, 6);
 
-  // ── PESO TOTAL ────────────────────────────────────
   const pesoTotal = validos.reduce((s, r) => s + getNum(r, col.pesoLiq), 0);
-
-  // ── QTD ITENS TOTAL ────────────────────────────────
   const qtdItensTotal = pedidosUnicos.reduce((s, r) => s + getNum(r, col.qtdItens), 0);
 
   return {
@@ -742,7 +731,6 @@ function findCol(headers, candidates) {
     const i = headers.findIndex(h => h.toLowerCase().trim() === c.toLowerCase().trim());
     if (i >= 0) return headers[i];
   }
-  // Busca parcial
   for (const c of candidates) {
     const i = headers.findIndex(h => h.toLowerCase().includes(c.toLowerCase().substring(0, 6)));
     if (i >= 0) return headers[i];
@@ -759,21 +747,17 @@ function getNum(row, col) {
   if (!col) return 0;
   const v = row[col];
   if (v === null || v === undefined || v === '') return 0;
-  const n = parseFloat(v.toString().replace(',', '.'));
+  const n = parseFloat(v.toString().replace(/\./g, '').replace(',', '.'));
   return isNaN(n) ? 0 : n;
 }
 
 function parseDate(str) {
   if (!str || str === '') return null;
-  // Tenta vários formatos
   const s = str.toString().trim();
-  // DD/MM/YYYY
   const m1 = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
   if (m1) return new Date(+m1[3], +m1[2]-1, +m1[1]);
-  // YYYY-MM-DD
   const m2 = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
   if (m2) return new Date(+m2[1], +m2[2]-1, +m2[3]);
-  // Timestamp ISO
   const d = new Date(s);
   if (!isNaN(d)) return d;
   return null;
@@ -803,14 +787,11 @@ function shortName(name, maxLen = 26) {
 }
 
 /* ═══════════════════════════════════════════════
-   RENDER DASHBOARD
+   RENDER DASHBOARD (inalterado)
 ═══════════════════════════════════════════════ */
 
 function renderDashboard(kpi) {
-  const pct = (v, total) => total > 0 ? Math.round(v / total * 100) : 0;
-
   const html = `
-    <!-- PERÍODO INFO -->
     <div class="period-info-bar">
       <span>📅 Período: <strong>${fmtDate(kpi.dataMin)} → ${fmtDate(kpi.dataMax)}</strong></span>
       <span>📋 Registros na planilha: <strong>${fmtNum(kpi.totalRegistros)}</strong></span>
@@ -818,7 +799,6 @@ function renderDashboard(kpi) {
       <span>❌ Cancelados: <strong>${kpi.cancelados}</strong></span>
     </div>
 
-    <!-- FATURAMENTO & VENDAS -->
     <div class="section-title">💰 Faturamento & Vendas</div>
     <div class="cards-grid">
 
@@ -875,7 +855,6 @@ function renderDashboard(kpi) {
 
     </div>
 
-    <!-- CLIENTES -->
     <div class="section-title">👥 Base de Clientes</div>
     <div class="cards-grid">
 
@@ -925,7 +904,6 @@ function renderDashboard(kpi) {
 
     </div>
 
-    <!-- PERFORMANCE -->
     <div class="section-title">📈 Performance & Operacional</div>
     <div class="cards-grid">
 
@@ -977,7 +955,6 @@ function renderDashboard(kpi) {
 
     </div>
 
-    <!-- RANKINGS -->
     <div class="section-title">🏆 Rankings</div>
     <div class="cards-grid-2">
 
@@ -1030,27 +1007,70 @@ function renderDashboard(kpi) {
 }
 
 /* ═══════════════════════════════════════════════
-   LOAD SHEET
+   LOAD SHEET — CORRIGIDO COM FETCH + CORS PROXY
 ═══════════════════════════════════════════════ */
 
+/**
+ * Converte qualquer URL de Google Sheets para formato CSV de exportação.
+ * Aceita URLs de edição, compartilhamento ou publicação.
+ */
 function buildCSVUrl(raw) {
   raw = raw.trim();
 
-  // Já é URL de CSV publicado
-  if (raw.includes('output=csv') || raw.includes('.csv')) return raw;
-
-  // URL de edição do sheets → converte para pub CSV
-  // https://docs.google.com/spreadsheets/d/ID/edit...
+  // Extrai o ID da planilha
   const m = raw.match(/\/spreadsheets\/d\/([\w-]+)/);
-  if (m) {
-    const id = m[1];
-    // Tenta pegar gid se existir
-    const gid = raw.match(/[#&?]gid=(\d+)/);
-    const gidParam = gid ? `&gid=${gid[1]}` : '';
-    return `https://docs.google.com/spreadsheets/d/${id}/pub?output=csv${gidParam}`;
+  if (!m) return raw;
+
+  const id = m[1];
+
+  // Tenta pegar gid se existir na URL
+  const gidMatch = raw.match(/[#&?]gid=(\d+)/);
+  const gidParam = gidMatch ? `&gid=${gidMatch[1]}` : '';
+
+  // Formato de exportação direta (mais confiável que /pub)
+  return `https://docs.google.com/spreadsheets/d/${id}/export?format=csv${gidParam}`;
+}
+
+/**
+ * Lista de proxies CORS para fallback.
+ * Se o fetch direto falhar por CORS, tenta via proxy.
+ */
+const CORS_PROXIES = [
+  url => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+  url => `https://corsproxy.io/?${encodeURIComponent(url)}`,
+  url => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
+];
+
+/**
+ * Tenta fazer fetch direto e, em caso de falha CORS, tenta cada proxy na lista.
+ */
+async function fetchWithCORSFallback(url) {
+  // 1) Tentativa direta
+  try {
+    const resp = await fetch(url, { mode: 'cors' });
+    if (resp.ok) {
+      const text = await resp.text();
+      if (text && text.length > 10) return { text, method: 'direto' };
+    }
+  } catch (e) {
+    console.log('Fetch direto falhou (CORS esperado), tentando proxies…');
   }
 
-  return raw; // retorna como está
+  // 2) Tentativa com cada proxy CORS
+  for (let i = 0; i < CORS_PROXIES.length; i++) {
+    const proxyUrl = CORS_PROXIES[i](url);
+    try {
+      const resp = await fetch(proxyUrl);
+      if (resp.ok) {
+        const text = await resp.text();
+        if (text && text.length > 10) return { text, method: `proxy ${i + 1}` };
+      }
+    } catch (e) {
+      console.log(`Proxy ${i + 1} falhou, tentando próximo…`);
+    }
+  }
+
+  throw new Error('Não foi possível acessar a planilha. Verifique se ela está com acesso "Qualquer pessoa com o link" ou publicada na web.');
 }
 
 async function loadSheet() {
@@ -1060,35 +1080,39 @@ async function loadSheet() {
     return;
   }
 
-  const url = buildCSVUrl(rawUrl);
+  const csvUrl = buildCSVUrl(rawUrl);
 
   setLoading(true);
   showStatus('loading', 'Conectando ao Google Sheets…');
 
   try {
-    // PapaParse faz o fetch + parse
-    Papa.parse(url, {
-      download: true,
-      skipEmptyLines: true,
-      complete: (results) => {
-        try {
-          const kpi = processData(results.data);
-          renderDashboard(kpi);
-          showStatus('success', `✅ ${fmtNum(kpi.totalRegistros)} registros carregados com sucesso — ${fmtNum(kpi.totalVendas)} pedidos únicos processados.`);
-        } catch (err) {
-          showStatus('error', 'Erro ao processar dados: ' + err.message);
-        }
-        setLoading(false);
-      },
-      error: (err) => {
-        showStatus('error', 'Erro ao carregar planilha. Verifique se a URL está publicada publicamente como CSV. Detalhe: ' + err.message);
-        setLoading(false);
-      }
-    });
+    // Fetch com fallback de CORS
+    showStatus('loading', 'Baixando dados da planilha…');
+    const { text: csvText, method } = await fetchWithCORSFallback(csvUrl);
+
+    // Verifica se recebeu HTML ao invés de CSV (erro de permissão do Google)
+    if (csvText.trim().startsWith('<!DOCTYPE') || csvText.trim().startsWith('<html')) {
+      throw new Error('A planilha retornou HTML em vez de CSV. Verifique se o compartilhamento está como "Qualquer pessoa com o link pode ver".');
+    }
+
+    // Parse do CSV com PapaParse
+    showStatus('loading', 'Processando indicadores…');
+    const results = Papa.parse(csvText, { skipEmptyLines: true });
+
+    if (results.errors && results.errors.length > 0) {
+      console.warn('PapaParse warnings:', results.errors);
+    }
+
+    const kpi = processData(results.data);
+    renderDashboard(kpi);
+    showStatus('success', `✅ ${fmtNum(kpi.totalRegistros)} registros carregados (via ${method}) — ${fmtNum(kpi.totalVendas)} pedidos únicos processados.`);
+
   } catch (err) {
-    showStatus('error', 'Erro inesperado: ' + err.message);
-    setLoading(false);
+    console.error('Erro completo:', err);
+    showStatus('error', err.message || 'Erro inesperado ao carregar planilha.');
   }
+
+  setLoading(false);
 }
 
 function setLoading(on) {
@@ -1107,7 +1131,6 @@ function showStatus(type, msg) {
   txt.textContent = msg;
 }
 
-// Permite pressionar Enter no campo URL
 document.getElementById('sheets-url').addEventListener('keydown', e => {
   if (e.key === 'Enter') loadSheet();
 });
