@@ -1,126 +1,136 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Visão Geral Comercial</title>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+
+<style>
+body { font-family: Arial; padding:20px; background:#f5f5f5; }
+input { width:70%; padding:10px; }
+button { padding:10px 20px; cursor:pointer; }
+#status { margin-top:15px; font-weight:bold; }
+</style>
+</head>
+
+<body>
+
+<h2>Dashboard Comercial</h2>
+
+<input id="sheets-url" placeholder="Cole a URL do Google Sheets (CSV)">
+<button onclick="loadSheet()">Carregar</button>
+
+<div id="status"></div>
+<div id="dashboard"></div>
+
 <script>
-'use strict';
 
-function processData(rows) {
-  if (!rows || rows.length < 2) throw new Error('Planilha sem dados suficientes.');
+function showStatus(msg, type='black'){
+  const el = document.getElementById('status');
+  el.style.color = type;
+  el.innerText = msg;
+}
 
-  const headers = rows[0].map(h => h ? h.toString().trim() : '');
+function buildCSVUrl(raw){
+  raw = raw.trim();
 
-  const warnings = [];
+  if(raw.includes('output=csv')) return raw;
 
-  function colIdx(fixedIdx, nameCandidates, label) {
-    if (rows.length > 1 && rows[1][fixedIdx] !== undefined && rows[1][fixedIdx] !== '') {
-      return fixedIdx;
-    }
-
-    for (const c of nameCandidates) {
-      const i = headers.findIndex(h => h.toLowerCase().trim() === c.toLowerCase().trim());
-      if (i >= 0) return i;
-    }
-
-    for (const c of nameCandidates) {
-      const i = headers.findIndex(h => h.toLowerCase().includes(c.toLowerCase().substring(0, 5)));
-      if (i >= 0) return i;
-    }
-
-    warnings.push(`Coluna não encontrada: ${label}`);
-    return null; // NÃO força índice errado
+  const m = raw.match(/\/d\/([\w-]+)/);
+  if(m){
+    return `https://docs.google.com/spreadsheets/d/${m[1]}/pub?output=csv`;
   }
 
-  const IDX = {
-    cliente: colIdx(1, ['Cliente', 'Cód. Cliente'], 'Cliente'),
-    nomeCliente: colIdx(2, ['Nome Cliente'], 'Nome Cliente'),
-    situacao: colIdx(8, ['Situação', 'Status'], 'Situação'),
-    total: 5,
-    condicao: 12,
-    dataPedido: 10,
-    dataFinalizacao: colIdx(27, ['Data Finalização'], 'Data Finalização'),
-    ultimaCompra: colIdx(53, ['Última Compra'], 'Última Compra'),
-    nomeRepres: colIdx(6, ['Nome Repres.'], 'Representante'),
-    nomeFant: colIdx(31, ['Nome Fant Repres.'], 'Fantasia Rep'),
-    cidade: colIdx(13, ['Cidade'], 'Cidade'),
-    uf: colIdx(29, ['UF'], 'UF'),
-    tipoMovimento: colIdx(64, ['Tipo Movimento'], 'Tipo Movimento'),
-    qtdItens: colIdx(52, ['Qtd Itens'], 'Qtd Itens'),
-    pesoLiq: colIdx(24, ['Peso Liq'], 'Peso Líquido'),
-  };
+  return raw;
+}
 
-  const data = rows.slice(1).filter(r => r && r.some(v => v));
+function parseDate(str){
+  if(!str) return null;
+  const d = new Date(str);
+  return isNaN(d) ? null : d;
+}
 
-  const gS = (row, idx) => (idx !== null && row[idx]) ? row[idx].toString().trim() : '';
-  const gN = (row, idx) => {
-    if (idx === null) return 0;
-    const v = row[idx];
-    if (!v) return 0;
-    return parseFloat(v.toString().replace(/\./g, '').replace(',', '.')) || 0;
-  };
+function processData(rows){
+  if(!rows || rows.length < 2) throw new Error('Sem dados');
 
-  const isCancelado = r => gS(r, IDX.situacao).toLowerCase().includes('cancelad');
-  const isAcrescentar = r => gS(r, IDX.condicao).toUpperCase().startsWith('ACRESCENTAR');
+  const data = rows.slice(1);
 
-  const validos = data.filter(r => !isCancelado(r));
-  const pedidosUnicos = validos.filter(r => !isAcrescentar(r));
+  let total = 0;
 
-  const faturamentoTotal = validos.reduce((s, r) => s + gN(r, IDX.total), 0);
-
-  const totalPorCliente = {};
-  validos.forEach(r => {
-    const cli = gS(r, IDX.cliente) || gS(r, IDX.nomeCliente);
-    if (!cli) return;
-    totalPorCliente[cli] = (totalPorCliente[cli] || 0) + gN(r, IDX.total);
+  data.forEach(r=>{
+    const val = parseFloat((r[5] || "0").replace(",", "."));
+    if(!isNaN(val)) total += val;
   });
 
-  const clientesComVenda = Object.keys(totalPorCliente).length;
-  const ticketMedio = clientesComVenda ? faturamentoTotal / clientesComVenda : 0;
-
   return {
-    faturamentoTotal,
-    ticketMedio,
-    totalVendas: pedidosUnicos.length,
-    clientesComVenda,
-    warnings
+    total,
+    registros: data.length
   };
 }
 
-async function loadSheet() {
-  const rawUrl = document.getElementById('sheets-url').value.trim();
-  if (!rawUrl) {
-    showStatus('error', 'Cole a URL.');
+function renderDashboard(kpi){
+  document.getElementById('dashboard').innerHTML =
+    `<h3>Faturamento: R$ ${kpi.total.toFixed(2)}</h3>
+     <p>Registros: ${kpi.registros}</p>`;
+}
+
+async function loadSheet(){
+
+  const raw = document.getElementById('sheets-url').value;
+
+  if(!raw){
+    showStatus('Cole a URL', 'red');
     return;
   }
 
-  const url = buildCSVUrl(rawUrl);
+  const url = buildCSVUrl(raw);
 
-  setLoading(true);
-  showStatus('loading', 'Carregando...');
+  showStatus('Testando acesso...', 'blue');
 
-  Papa.parse(url, {
-    download: true,
-    skipEmptyLines: true,
-    complete: (results) => {
-      try {
-        console.log('HEADERS:', results.data[0]);
+  try{
 
-        const kpi = processData(results.data);
+    const response = await fetch(url);
 
-        renderDashboard(kpi);
-
-        if (kpi.warnings.length > 0) {
-          showStatus('error', '⚠️ Problemas encontrados: ' + kpi.warnings.join(' | '));
-        } else {
-          showStatus('success', 'Dados carregados com sucesso');
-        }
-
-      } catch (err) {
-        showStatus('error', 'Erro real: ' + err.message);
-      }
-
-      setLoading(false);
-    },
-    error: (err) => {
-      showStatus('error', 'Erro ao acessar planilha: ' + err.message);
-      setLoading(false);
+    if(!response.ok){
+      throw new Error(`HTTP ${response.status}`);
     }
-  });
+
+    const text = await response.text();
+
+    if(!text || text.length < 10){
+      throw new Error('CSV vazio ou inválido');
+    }
+
+    showStatus('Processando...', 'blue');
+
+    Papa.parse(text, {
+      skipEmptyLines:true,
+      complete:(res)=>{
+        try{
+          const kpi = processData(res.data);
+          renderDashboard(kpi);
+          showStatus('OK carregado com sucesso', 'green');
+        }catch(e){
+          showStatus('Erro nos dados: ' + e.message, 'red');
+        }
+      },
+      error:(err)=>{
+        showStatus('Erro no parse: ' + err.message, 'red');
+      }
+    });
+
+  }catch(err){
+    showStatus(
+      'Falha ao acessar: ' + err.message + 
+      ' | Verifique publicação ou bloqueio Google',
+      'red'
+    );
+  }
 }
+
 </script>
+
+</body>
+</html>
