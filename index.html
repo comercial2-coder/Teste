@@ -1,1109 +1,126 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Visão Geral Comercial — Natural Imports</title>
-  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
-  <style>
-    :root {
-      --blue: #243776;
-      --blue-light: #2e4a9e;
-      --blue-pale: #e8ecf7;
-      --orange: #f26122;
-      --orange-light: #ff8c55;
-      --orange-pale: #fff0e8;
-      --bg: #f0f2f7;
-      --surface: #ffffff;
-      --surface2: #f7f8fc;
-      --border: #e2e6f0;
-      --text: #1a2340;
-      --text-muted: #6b7a9e;
-      --green: #16a34a;
-      --green-pale: #dcfce7;
-      --red: #dc2626;
-      --red-pale: #fee2e2;
-      --yellow: #d97706;
-      --yellow-pale: #fef3c7;
-      --radius: 16px;
-      --radius-sm: 10px;
-      --shadow: 0 2px 16px rgba(36,55,118,0.07);
-      --shadow-lg: 0 8px 32px rgba(36,55,118,0.12);
-    }
-
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-
-    body {
-      font-family: 'DM Sans', sans-serif;
-      background: var(--bg);
-      color: var(--text);
-      min-height: 100vh;
-    }
-
-    /* HEADER */
-    header {
-      background: var(--blue);
-      padding: 0 32px;
-      height: 60px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      position: sticky;
-      top: 0;
-      z-index: 100;
-      box-shadow: 0 2px 20px rgba(36,55,118,0.3);
-    }
-
-    .header-brand {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-
-    .header-logo {
-      width: 32px;
-      height: 32px;
-      background: var(--orange);
-      border-radius: 8px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 16px;
-    }
-
-    .header-title {
-      font-family: 'Syne', sans-serif;
-      font-weight: 700;
-      font-size: 16px;
-      color: #fff;
-      letter-spacing: 0.01em;
-    }
-
-    .header-subtitle {
-      font-size: 11px;
-      color: rgba(255,255,255,0.5);
-      margin-top: 1px;
-    }
-
-    .header-period {
-      font-size: 12px;
-      color: rgba(255,255,255,0.6);
-      background: rgba(255,255,255,0.1);
-      padding: 4px 12px;
-      border-radius: 20px;
-      border: 1px solid rgba(255,255,255,0.15);
-    }
-
-    /* MAIN LAYOUT */
-    main {
-      padding: 28px 32px;
-      max-width: 1600px;
-      margin: 0 auto;
-    }
-
-    /* URL CONFIG CARD */
-    .config-card {
-      background: var(--surface);
-      border-radius: var(--radius);
-      padding: 20px 24px;
-      margin-bottom: 24px;
-      box-shadow: var(--shadow);
-      border: 1px solid var(--border);
-      display: flex;
-      align-items: center;
-      gap: 16px;
-      flex-wrap: wrap;
-    }
-
-    .config-icon {
-      width: 40px;
-      height: 40px;
-      background: var(--blue-pale);
-      border-radius: 10px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-shrink: 0;
-      font-size: 18px;
-    }
-
-    .config-label {
-      font-family: 'Syne', sans-serif;
-      font-size: 13px;
-      font-weight: 600;
-      color: var(--blue);
-      margin-bottom: 4px;
-    }
-
-    .config-hint {
-      font-size: 11px;
-      color: var(--text-muted);
-    }
-
-    .config-input-wrap {
-      flex: 1;
-      min-width: 280px;
-      display: flex;
-      gap: 10px;
-    }
-
-    .config-input {
-      flex: 1;
-      height: 42px;
-      border: 1.5px solid var(--border);
-      border-radius: var(--radius-sm);
-      padding: 0 14px;
-      font-family: 'DM Sans', sans-serif;
-      font-size: 13px;
-      color: var(--text);
-      background: var(--surface2);
-      transition: border-color 0.2s, box-shadow 0.2s;
-      outline: none;
-    }
-
-    .config-input:focus {
-      border-color: var(--blue);
-      box-shadow: 0 0 0 3px rgba(36,55,118,0.1);
-    }
-
-    .config-input::placeholder { color: var(--text-muted); }
-
-    .btn-load {
-      height: 42px;
-      padding: 0 22px;
-      background: var(--orange);
-      color: #fff;
-      border: none;
-      border-radius: var(--radius-sm);
-      font-family: 'Syne', sans-serif;
-      font-size: 13px;
-      font-weight: 600;
-      cursor: pointer;
-      white-space: nowrap;
-      transition: background 0.2s, transform 0.1s;
-      display: flex;
-      align-items: center;
-      gap: 7px;
-    }
-
-    .btn-load:hover { background: var(--orange-light); transform: translateY(-1px); }
-    .btn-load:active { transform: translateY(0); }
-    .btn-load:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
-
-    /* STATUS BAR */
-    .status-bar {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      padding: 10px 16px;
-      border-radius: var(--radius-sm);
-      font-size: 12.5px;
-      font-weight: 500;
-      margin-bottom: 24px;
-      display: none;
-    }
-
-    .status-bar.show { display: flex; }
-    .status-bar.loading { background: var(--blue-pale); color: var(--blue); }
-    .status-bar.success { background: var(--green-pale); color: var(--green); }
-    .status-bar.error { background: var(--red-pale); color: var(--red); }
-
-    .status-dot {
-      width: 8px; height: 8px;
-      border-radius: 50%;
-      flex-shrink: 0;
-    }
-
-    .status-bar.loading .status-dot { background: var(--blue); animation: pulse 1s infinite; }
-    .status-bar.success .status-dot { background: var(--green); }
-    .status-bar.error .status-dot { background: var(--red); }
-
-    @keyframes pulse {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.3; }
-    }
-
-    /* SECTION TITLE */
-    .section-title {
-      font-family: 'Syne', sans-serif;
-      font-size: 11px;
-      font-weight: 700;
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-      color: var(--text-muted);
-      margin-bottom: 12px;
-      padding-left: 2px;
-    }
-
-    /* GRID CARDS */
-    .cards-grid {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 16px;
-      margin-bottom: 24px;
-    }
-
-    @media (max-width: 1200px) { .cards-grid { grid-template-columns: repeat(3, 1fr); } }
-    @media (max-width: 900px) { .cards-grid { grid-template-columns: repeat(2, 1fr); } }
-    @media (max-width: 560px) { .cards-grid { grid-template-columns: 1fr; } }
-
-    .kpi-card {
-      background: var(--surface);
-      border-radius: var(--radius);
-      padding: 20px;
-      box-shadow: var(--shadow);
-      border: 1px solid var(--border);
-      transition: box-shadow 0.2s, transform 0.2s;
-      position: relative;
-      overflow: hidden;
-    }
-
-    .kpi-card:hover {
-      box-shadow: var(--shadow-lg);
-      transform: translateY(-2px);
-    }
-
-    .kpi-card::before {
-      content: '';
-      position: absolute;
-      top: 0; left: 0; right: 0;
-      height: 3px;
-      background: var(--accent-color, var(--blue));
-      opacity: 0.6;
-    }
-
-    .kpi-card.accent-orange { --accent-color: var(--orange); }
-    .kpi-card.accent-green { --accent-color: var(--green); }
-    .kpi-card.accent-red { --accent-color: var(--red); }
-    .kpi-card.accent-yellow { --accent-color: var(--yellow); }
-    .kpi-card.accent-blue { --accent-color: var(--blue); }
-
-    .kpi-header {
-      display: flex;
-      align-items: flex-start;
-      justify-content: space-between;
-      margin-bottom: 14px;
-    }
-
-    .kpi-icon-wrap {
-      width: 40px; height: 40px;
-      border-radius: 10px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 18px;
-      flex-shrink: 0;
-    }
-
-    .kpi-icon-wrap.blue { background: var(--blue-pale); }
-    .kpi-icon-wrap.orange { background: var(--orange-pale); }
-    .kpi-icon-wrap.green { background: var(--green-pale); }
-    .kpi-icon-wrap.red { background: var(--red-pale); }
-    .kpi-icon-wrap.yellow { background: var(--yellow-pale); }
-
-    .kpi-label {
-      font-size: 12px;
-      font-weight: 500;
-      color: var(--text-muted);
-      margin-bottom: 6px;
-      line-height: 1.3;
-    }
-
-    .kpi-value {
-      font-family: 'Syne', sans-serif;
-      font-size: 26px;
-      font-weight: 800;
-      color: var(--text);
-      line-height: 1;
-      margin-bottom: 6px;
-      letter-spacing: -0.02em;
-    }
-
-    .kpi-value.loading-val {
-      background: var(--border);
-      border-radius: 6px;
-      color: transparent;
-      animation: shimmer 1.5s infinite;
-      user-select: none;
-    }
-
-    @keyframes shimmer {
-      0% { opacity: 0.5; }
-      50% { opacity: 1; }
-      100% { opacity: 0.5; }
-    }
-
-    .kpi-sub {
-      font-size: 11px;
-      color: var(--text-muted);
-      line-height: 1.4;
-    }
-
-    .kpi-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-      font-size: 10.5px;
-      font-weight: 600;
-      padding: 3px 8px;
-      border-radius: 20px;
-    }
-
-    .badge-green { background: var(--green-pale); color: var(--green); }
-    .badge-red { background: var(--red-pale); color: var(--red); }
-    .badge-yellow { background: var(--yellow-pale); color: var(--yellow); }
-    .badge-blue { background: var(--blue-pale); color: var(--blue); }
-
-    /* WIDE CARD */
-    .cards-grid-2 {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 16px;
-      margin-bottom: 24px;
-    }
-
-    @media (max-width: 768px) { .cards-grid-2 { grid-template-columns: 1fr; } }
-
-    .table-card {
-      background: var(--surface);
-      border-radius: var(--radius);
-      padding: 20px;
-      box-shadow: var(--shadow);
-      border: 1px solid var(--border);
-    }
-
-    .table-card-title {
-      font-family: 'Syne', sans-serif;
-      font-size: 14px;
-      font-weight: 700;
-      color: var(--text);
-      margin-bottom: 16px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .ranking-list { display: flex; flex-direction: column; gap: 10px; }
-
-    .ranking-item {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-
-    .ranking-pos {
-      width: 22px; height: 22px;
-      border-radius: 50%;
-      background: var(--blue-pale);
-      color: var(--blue);
-      font-size: 11px;
-      font-weight: 700;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-shrink: 0;
-      font-family: 'Syne', sans-serif;
-    }
-
-    .ranking-pos.gold { background: #fef3c7; color: #92400e; }
-    .ranking-pos.silver { background: #f1f5f9; color: #475569; }
-    .ranking-pos.bronze { background: #fff7ed; color: #92400e; }
-
-    .ranking-name {
-      flex: 1;
-      font-size: 13px;
-      font-weight: 500;
-      color: var(--text);
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    .ranking-bar-wrap {
-      flex: 1.5;
-      height: 6px;
-      background: var(--border);
-      border-radius: 3px;
-      overflow: hidden;
-    }
-
-    .ranking-bar {
-      height: 100%;
-      border-radius: 3px;
-      background: linear-gradient(90deg, var(--blue), var(--blue-light));
-      transition: width 0.8s cubic-bezier(0.4,0,0.2,1);
-    }
-
-    .ranking-val {
-      font-family: 'Syne', sans-serif;
-      font-size: 12px;
-      font-weight: 700;
-      color: var(--text);
-      white-space: nowrap;
-    }
-
-    /* EMPTY STATE */
-    .empty-state {
-      text-align: center;
-      padding: 60px 24px;
-      color: var(--text-muted);
-    }
-
-    .empty-icon { font-size: 48px; margin-bottom: 16px; opacity: 0.5; }
-    .empty-title { font-family: 'Syne', sans-serif; font-size: 16px; font-weight: 700; color: var(--text); margin-bottom: 8px; }
-    .empty-desc { font-size: 13px; line-height: 1.6; max-width: 320px; margin: 0 auto; }
-
-    /* DIVIDER */
-    .divider {
-      height: 1px;
-      background: var(--border);
-      margin: 4px 0 20px;
-    }
-
-    /* PERIOD INFO */
-    .period-info-bar {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius-sm);
-      padding: 10px 16px;
-      display: flex;
-      align-items: center;
-      gap: 20px;
-      flex-wrap: wrap;
-      margin-bottom: 20px;
-      font-size: 12px;
-      color: var(--text-muted);
-    }
-
-    .period-info-bar span strong { color: var(--text); font-weight: 600; }
-
-    /* SPINNER */
-    .spinner {
-      display: inline-block;
-      width: 14px; height: 14px;
-      border: 2px solid currentColor;
-      border-top-color: transparent;
-      border-radius: 50%;
-      animation: spin 0.7s linear infinite;
-    }
-
-    @keyframes spin { to { transform: rotate(360deg); } }
-  </style>
-</head>
-<body>
-
-<header>
-  <div class="header-brand">
-    <div class="header-logo">🌿</div>
-    <div>
-      <div class="header-title">Natural Imports</div>
-      <div class="header-subtitle">Visão Geral Comercial</div>
-    </div>
-  </div>
-  <div class="header-period" id="header-period">Nenhum dado carregado</div>
-</header>
-
-<main>
-
-  <!-- CONFIG CARD -->
-  <div class="config-card">
-    <div class="config-icon">🔗</div>
-    <div>
-      <div class="config-label">Google Sheets — URL Pública</div>
-      <div class="config-hint">Cole a URL de publicação (Arquivo → Compartilhar → Publicar na web → CSV)</div>
-    </div>
-    <div class="config-input-wrap">
-      <input
-        type="text"
-        id="sheets-url"
-        class="config-input"
-        placeholder="https://docs.google.com/spreadsheets/d/.../pub?output=csv"
-        aria-label="URL do Google Sheets"
-      />
-      <button type="button" class="btn-load" id="btn-load" onclick="loadSheet()">
-        <span id="btn-icon">📥</span>
-        <span id="btn-text">Carregar</span>
-      </button>
-    </div>
-  </div>
-
-  <!-- STATUS -->
-  <div class="status-bar" id="status-bar">
-    <div class="status-dot"></div>
-    <span id="status-text"></span>
-  </div>
-
-  <!-- DASHBOARD (inicialmente vazio) -->
-  <div id="dashboard">
-    <div class="empty-state">
-      <div class="empty-icon">📊</div>
-      <div class="empty-title">Aguardando planilha</div>
-      <div class="empty-desc">Cole a URL do Google Sheets publicado em CSV acima e clique em Carregar para visualizar todos os indicadores.</div>
-    </div>
-  </div>
-
-</main>
-
 <script>
 'use strict';
-
-/* ═══════════════════════════════════════════════
-   LÓGICA DE CÁLCULO
-═══════════════════════════════════════════════ */
 
 function processData(rows) {
   if (!rows || rows.length < 2) throw new Error('Planilha sem dados suficientes.');
 
-  // Linha 0 = headers, resto = dados
   const headers = rows[0].map(h => h ? h.toString().trim() : '');
 
-  // ── MAPEAMENTO DE COLUNAS ─────────────────────────
-  // Estratégia: índice fixo tem prioridade, fallback por nome
-  // Índices (0-based): A=0, B=1, C=2, D=3, E=4, F=5, G=6, H=7, ...
-  function colIdx(fixedIdx, nameCandidates) {
-    // Verifica se o índice fixo tem dado real na primeira linha de dados
+  const warnings = [];
+
+  function colIdx(fixedIdx, nameCandidates, label) {
     if (rows.length > 1 && rows[1][fixedIdx] !== undefined && rows[1][fixedIdx] !== '') {
       return fixedIdx;
     }
-    // Fallback: busca por nome
+
     for (const c of nameCandidates) {
       const i = headers.findIndex(h => h.toLowerCase().trim() === c.toLowerCase().trim());
       if (i >= 0) return i;
     }
-    // Busca parcial
+
     for (const c of nameCandidates) {
       const i = headers.findIndex(h => h.toLowerCase().includes(c.toLowerCase().substring(0, 5)));
       if (i >= 0) return i;
     }
-    return fixedIdx; // usa o fixo mesmo assim
+
+    warnings.push(`Coluna não encontrada: ${label}`);
+    return null; // NÃO força índice errado
   }
 
   const IDX = {
-    cliente:        colIdx(1,  ['Cliente', 'Cód. Cliente', 'Cod. Cliente']),
-    nomeCliente:    colIdx(2,  ['Nome Cliente']),
-    situacao:       colIdx(8,  ['Situação', 'Situacao', 'Status']),
-    total:          5,   // Coluna F — sempre fixo
-    totalImpostos:  7,   // Coluna H
-    condicao:       12,  // Coluna M
-    dataPedido:     10,  // Coluna K
-    dataFinalizacao: colIdx(27, ['Data Finalização', 'Data Finalizacao']),
-    ultimaCompra:   colIdx(53, ['Última Compra', 'Ultima Compra']),
-    nomeRepres:     colIdx(6,  ['Nome Repres.', 'Nome Representante']),
-    nomeFant:       colIdx(31, ['Nome Fant Repres.']),
-    cidade:         colIdx(13, ['Cidade']),
-    uf:             colIdx(29, ['UF']),
-    tipoMovimento:  colIdx(64, ['Tipo de movimento', 'Tipo Movimento']),
-    qtdItens:       colIdx(52, ['Qtd Itens.', 'Qtd. Itens']),
-    pesoLiq:        colIdx(24, ['Peso. Liq', 'Peso Liq']),
+    cliente: colIdx(1, ['Cliente', 'Cód. Cliente'], 'Cliente'),
+    nomeCliente: colIdx(2, ['Nome Cliente'], 'Nome Cliente'),
+    situacao: colIdx(8, ['Situação', 'Status'], 'Situação'),
+    total: 5,
+    condicao: 12,
+    dataPedido: 10,
+    dataFinalizacao: colIdx(27, ['Data Finalização'], 'Data Finalização'),
+    ultimaCompra: colIdx(53, ['Última Compra'], 'Última Compra'),
+    nomeRepres: colIdx(6, ['Nome Repres.'], 'Representante'),
+    nomeFant: colIdx(31, ['Nome Fant Repres.'], 'Fantasia Rep'),
+    cidade: colIdx(13, ['Cidade'], 'Cidade'),
+    uf: colIdx(29, ['UF'], 'UF'),
+    tipoMovimento: colIdx(64, ['Tipo Movimento'], 'Tipo Movimento'),
+    qtdItens: colIdx(52, ['Qtd Itens'], 'Qtd Itens'),
+    pesoLiq: colIdx(24, ['Peso Liq'], 'Peso Líquido'),
   };
 
-  // Converte cada linha num array de valores (mantém posição)
-  const data = rows.slice(1)
-    .filter(row => row && row.some(v => v !== '' && v !== null && v !== undefined))
-    .map(row => row); // array puro — acesso por índice
+  const data = rows.slice(1).filter(r => r && r.some(v => v));
 
-  // Helpers usando índice
-  const gS = (row, idx) => (row[idx] !== undefined && row[idx] !== null) ? row[idx].toString().trim() : '';
+  const gS = (row, idx) => (idx !== null && row[idx]) ? row[idx].toString().trim() : '';
   const gN = (row, idx) => {
+    if (idx === null) return 0;
     const v = row[idx];
-    if (v === null || v === undefined || v === '') return 0;
-    const n = parseFloat(v.toString().replace(/\./g, '').replace(',', '.'));
-    return isNaN(n) ? parseFloat(v.toString().replace(',', '.')) || 0 : n;
+    if (!v) return 0;
+    return parseFloat(v.toString().replace(/\./g, '').replace(',', '.')) || 0;
   };
 
-  // ── FILTROS BASE ──────────────────────────────────
+  const isCancelado = r => gS(r, IDX.situacao).toLowerCase().includes('cancelad');
   const isAcrescentar = r => gS(r, IDX.condicao).toUpperCase().startsWith('ACRESCENTAR');
-  const isCancelado   = r => gS(r, IDX.situacao).toLowerCase().includes('cancelad');
-  const tipoMov       = r => gS(r, IDX.tipoMovimento).toUpperCase();
-  const isNFE         = r => tipoMov(r).includes('NFE VENDA');
-  const hasMovCol     = rows[1] && gS(rows[1], IDX.tipoMovimento) !== '';
 
-  // Pedidos válidos: não cancelado + (NFE VENDA se coluna existir)
-  const validos = data.filter(r => !isCancelado(r) && (!hasMovCol || isNFE(r)));
-
-  // Pedidos únicos (sem acrescentar) — base para contar pedidos
-  // Pedidos únicos (sem acrescentar) — base para contar pedidos
+  const validos = data.filter(r => !isCancelado(r));
   const pedidosUnicos = validos.filter(r => !isAcrescentar(r));
 
-  // ── FATURAMENTO ───────────────────────────────────
   const faturamentoTotal = validos.reduce((s, r) => s + gN(r, IDX.total), 0);
 
-  // ── TICKET MÉDIO ──────────────────────────────────
   const totalPorCliente = {};
   validos.forEach(r => {
     const cli = gS(r, IDX.cliente) || gS(r, IDX.nomeCliente);
     if (!cli) return;
     totalPorCliente[cli] = (totalPorCliente[cli] || 0) + gN(r, IDX.total);
   });
+
   const clientesComVenda = Object.keys(totalPorCliente).length;
-  const ticketMedio = clientesComVenda > 0 ? faturamentoTotal / clientesComVenda : 0;
-
-  // ── TOTAL DE VENDAS ───────────────────────────────
-  const totalVendas = pedidosUnicos.length;
-
-  // ── DATAS ─────────────────────────────────────────
-  const datas = pedidosUnicos
-    .map(r => parseDate(gS(r, IDX.dataPedido)))
-    .filter(Boolean)
-    .sort((a, b) => a - b);
-
-  const dataMin = datas[0];
-  const dataMax = datas[datas.length - 1];
-
-  // ── CLIENTES ATIVOS / EM RISCO / INATIVOS ────────
-  const ultimaAtividade = {};
-  validos.forEach(r => {
-    const cli = gS(r, IDX.cliente) || gS(r, IDX.nomeCliente);
-    if (!cli) return;
-    const dp = parseDate(gS(r, IDX.dataPedido));
-    if (dp && (!ultimaAtividade[cli] || dp > ultimaAtividade[cli])) {
-      ultimaAtividade[cli] = dp;
-    }
-  });
-
-  const ref = dataMax || new Date();
-  const d30 = new Date(ref); d30.setDate(d30.getDate() - 30);
-  const d60 = new Date(ref); d60.setDate(d60.getDate() - 60);
-
-  let clientesAtivos = 0, clientesEmRisco = 0, clientesInativos = 0;
-  Object.values(ultimaAtividade).forEach(dt => {
-    if (dt >= d30)      clientesAtivos++;
-    else if (dt >= d60) clientesEmRisco++;
-    else                clientesInativos++;
-  });
-
-  // ── TAXA DE RECOMPRA ─────────────────────────────
-  const pedidosPorCliente = {};
-  pedidosUnicos.forEach(r => {
-    const cli = gS(r, IDX.cliente) || gS(r, IDX.nomeCliente);
-    if (!cli) return;
-    pedidosPorCliente[cli] = (pedidosPorCliente[cli] || 0) + 1;
-  });
-  const comRecompra = Object.values(pedidosPorCliente).filter(n => n > 1).length;
-  const taxaRecompra = clientesComVenda > 0 ? (comRecompra / clientesComVenda * 100) : 0;
-
-  // ── CICLO MÉDIO DE VENDA ─────────────────────────
-  const ciclos = pedidosUnicos
-    .filter(r => gS(r, IDX.situacao).toLowerCase().includes('finaliz'))
-    .map(r => {
-      const dp = parseDate(gS(r, IDX.dataPedido));
-      const df = parseDate(gS(r, IDX.dataFinalizacao));
-      if (!dp || !df) return null;
-      return (df - dp) / (1000 * 60 * 60 * 24);
-    })
-    .filter(v => v !== null && v >= 0);
-  const cicloMedio = ciclos.length > 0 ? ciclos.reduce((s, v) => s + v, 0) / ciclos.length : 0;
-
-  // ── RECEITA RECORRENTE ────────────────────────────
-  let receitaRecorrente = 0;
-  validos.forEach(r => {
-    const uc = parseDate(gS(r, IDX.ultimaCompra));
-    const dp = parseDate(gS(r, IDX.dataPedido));
-    if (uc && dp && uc < dp) receitaRecorrente += gN(r, IDX.total);
-  });
-
-  // ── FINALIZADO vs EM ANDAMENTO ───────────────────
-  const fatFinalizado = validos
-    .filter(r => gS(r, IDX.situacao).toLowerCase().includes('finaliz'))
-    .reduce((s, r) => s + gN(r, IDX.total), 0);
-  const fatEmAndamento = faturamentoTotal - fatFinalizado;
-
-  // ── CANCELADOS ────────────────────────────────────
-  const cancelados = data.filter(r => isCancelado(r) && !isAcrescentar(r)).length;
-  const totalGeral = pedidosUnicos.length + cancelados;
-  const taxaCancelamento = totalGeral > 0 ? (cancelados / totalGeral * 100) : 0;
-
-  // ── RANKING REPRESENTANTES ────────────────────────
-  const repFat = {};
-  validos.forEach(r => {
-    const nome = gS(r, IDX.nomeFant) || gS(r, IDX.nomeRepres) || 'Interno';
-    repFat[nome] = (repFat[nome] || 0) + gN(r, IDX.total);
-  });
-  const rankingRep = Object.entries(repFat).sort((a, b) => b[1] - a[1]).slice(0, 6);
-
-  // ── RANKING CIDADES ───────────────────────────────
-  const cidFat = {};
-  validos.forEach(r => {
-    const c = gS(r, IDX.cidade);
-    const uf = gS(r, IDX.uf);
-    if (!c) return;
-    const key = uf ? `${c} / ${uf}` : c;
-    cidFat[key] = (cidFat[key] || 0) + gN(r, IDX.total);
-  });
-  const rankingCid = Object.entries(cidFat).sort((a, b) => b[1] - a[1]).slice(0, 6);
-
-  // ── PESO & ITENS ──────────────────────────────────
-  const pesoTotal = validos.reduce((s, r) => s + gN(r, IDX.pesoLiq), 0);
-  const qtdItensTotal = pedidosUnicos.reduce((s, r) => s + gN(r, IDX.qtdItens), 0);
+  const ticketMedio = clientesComVenda ? faturamentoTotal / clientesComVenda : 0;
 
   return {
-    faturamentoTotal, ticketMedio, totalVendas, clientesComVenda,
-    clientesAtivos, clientesEmRisco, clientesInativos,
-    taxaRecompra, comRecompra,
-    cicloMedio, receitaRecorrente,
-    fatFinalizado, fatEmAndamento,
-    cancelados, taxaCancelamento,
-    pesoTotal, qtdItensTotal,
-    rankingRep, rankingCid,
-    dataMin, dataMax,
-    totalRegistros: data.length
+    faturamentoTotal,
+    ticketMedio,
+    totalVendas: pedidosUnicos.length,
+    clientesComVenda,
+    warnings
   };
-}
-
-/* ═══════════════════════════════════════════════
-   UTILITÁRIOS
-═══════════════════════════════════════════════ */
-
-function parseDate(str) {
-  if (!str || str === '') return null;
-  // Tenta vários formatos
-  const s = str.toString().trim();
-  // DD/MM/YYYY
-  const m1 = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
-  if (m1) return new Date(+m1[3], +m1[2]-1, +m1[1]);
-  // YYYY-MM-DD
-  const m2 = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
-  if (m2) return new Date(+m2[1], +m2[2]-1, +m2[3]);
-  // Timestamp ISO
-  const d = new Date(s);
-  if (!isNaN(d)) return d;
-  return null;
-}
-
-function fmtBRL(v) {
-  return 'R$ ' + v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
-
-function fmtNum(v) {
-  return v.toLocaleString('pt-BR');
-}
-
-function fmtPct(v) {
-  return v.toFixed(1).replace('.', ',') + '%';
-}
-
-function fmtDate(d) {
-  if (!d) return '—';
-  return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
-}
-
-function shortName(name, maxLen = 26) {
-  if (!name) return '—';
-  const s = name.toString().trim();
-  return s.length > maxLen ? s.substring(0, maxLen) + '…' : s;
-}
-
-/* ═══════════════════════════════════════════════
-   RENDER DASHBOARD
-═══════════════════════════════════════════════ */
-
-function renderDashboard(kpi) {
-  const pct = (v, total) => total > 0 ? Math.round(v / total * 100) : 0;
-
-  const html = `
-    <!-- PERÍODO INFO -->
-    <div class="period-info-bar">
-      <span>📅 Período: <strong>${fmtDate(kpi.dataMin)} → ${fmtDate(kpi.dataMax)}</strong></span>
-      <span>📋 Registros na planilha: <strong>${fmtNum(kpi.totalRegistros)}</strong></span>
-      <span>✅ Pedidos únicos válidos: <strong>${fmtNum(kpi.totalVendas)}</strong></span>
-      <span>❌ Cancelados: <strong>${kpi.cancelados}</strong></span>
-    </div>
-
-    <!-- FATURAMENTO & VENDAS -->
-    <div class="section-title">💰 Faturamento & Vendas</div>
-    <div class="cards-grid">
-
-      <div class="kpi-card accent-blue">
-        <div class="kpi-header">
-          <div>
-            <div class="kpi-label">Faturamento Total</div>
-            <div class="kpi-value">${fmtBRL(kpi.faturamentoTotal)}</div>
-          </div>
-          <div class="kpi-icon-wrap blue">💰</div>
-        </div>
-        <div class="kpi-sub">
-          <span class="kpi-badge badge-green">✅ Finalizado: ${fmtBRL(kpi.fatFinalizado)}</span>
-          &nbsp;
-          <span class="kpi-badge badge-yellow">⏳ Em andamento: ${fmtBRL(kpi.fatEmAndamento)}</span>
-        </div>
-      </div>
-
-      <div class="kpi-card accent-orange">
-        <div class="kpi-header">
-          <div>
-            <div class="kpi-label">Ticket Médio por Cliente</div>
-            <div class="kpi-value">${fmtBRL(kpi.ticketMedio)}</div>
-          </div>
-          <div class="kpi-icon-wrap orange">🛒</div>
-        </div>
-        <div class="kpi-sub">Faturamento total ÷ ${fmtNum(kpi.clientesComVenda)} clientes únicos com compra</div>
-      </div>
-
-      <div class="kpi-card accent-blue">
-        <div class="kpi-header">
-          <div>
-            <div class="kpi-label">Total de Vendas</div>
-            <div class="kpi-value">${fmtNum(kpi.totalVendas)}</div>
-          </div>
-          <div class="kpi-icon-wrap blue">📦</div>
-        </div>
-        <div class="kpi-sub">Pedidos únicos — complementos (acrescentar) somados ao pedido original</div>
-      </div>
-
-      <div class="kpi-card accent-red">
-        <div class="kpi-header">
-          <div>
-            <div class="kpi-label">Cancelamentos</div>
-            <div class="kpi-value">${kpi.cancelados}</div>
-          </div>
-          <div class="kpi-icon-wrap red">❌</div>
-        </div>
-        <div class="kpi-sub">
-          <span class="kpi-badge badge-red">Taxa: ${fmtPct(kpi.taxaCancelamento)}</span>
-          &nbsp; do total de pedidos gerados
-        </div>
-      </div>
-
-    </div>
-
-    <!-- CLIENTES -->
-    <div class="section-title">👥 Base de Clientes</div>
-    <div class="cards-grid">
-
-      <div class="kpi-card accent-blue">
-        <div class="kpi-header">
-          <div>
-            <div class="kpi-label">Clientes Únicos no Período</div>
-            <div class="kpi-value">${fmtNum(kpi.clientesComVenda)}</div>
-          </div>
-          <div class="kpi-icon-wrap blue">🏢</div>
-        </div>
-        <div class="kpi-sub">Clientes distintos com ao menos um pedido no período</div>
-      </div>
-
-      <div class="kpi-card accent-green">
-        <div class="kpi-header">
-          <div>
-            <div class="kpi-label">Clientes Ativos</div>
-            <div class="kpi-value">${fmtNum(kpi.clientesAtivos)}</div>
-          </div>
-          <div class="kpi-icon-wrap green">✅</div>
-        </div>
-        <div class="kpi-sub">Com compra nos últimos 30 dias — base: data mais recente da planilha</div>
-      </div>
-
-      <div class="kpi-card accent-yellow">
-        <div class="kpi-header">
-          <div>
-            <div class="kpi-label">Clientes em Risco</div>
-            <div class="kpi-value">${fmtNum(kpi.clientesEmRisco)}</div>
-          </div>
-          <div class="kpi-icon-wrap yellow">⚠️</div>
-        </div>
-        <div class="kpi-sub">30 a 60 dias sem compra — atenção para reativação</div>
-      </div>
-
-      <div class="kpi-card accent-red">
-        <div class="kpi-header">
-          <div>
-            <div class="kpi-label">Clientes Inativos</div>
-            <div class="kpi-value">${fmtNum(kpi.clientesInativos)}</div>
-          </div>
-          <div class="kpi-icon-wrap red">🔴</div>
-        </div>
-        <div class="kpi-sub">Mais de 60 dias sem compra registrada no período</div>
-      </div>
-
-    </div>
-
-    <!-- PERFORMANCE -->
-    <div class="section-title">📈 Performance & Operacional</div>
-    <div class="cards-grid">
-
-      <div class="kpi-card accent-orange">
-        <div class="kpi-header">
-          <div>
-            <div class="kpi-label">Taxa de Recompra</div>
-            <div class="kpi-value">${fmtPct(kpi.taxaRecompra)}</div>
-          </div>
-          <div class="kpi-icon-wrap orange">🔄</div>
-        </div>
-        <div class="kpi-sub">${fmtNum(kpi.comRecompra)} clientes com mais de 1 pedido no período</div>
-      </div>
-
-      <div class="kpi-card accent-blue">
-        <div class="kpi-header">
-          <div>
-            <div class="kpi-label">Ciclo Médio de Venda</div>
-            <div class="kpi-value">${kpi.cicloMedio.toFixed(1).replace('.', ',')} dias</div>
-          </div>
-          <div class="kpi-icon-wrap blue">⏱️</div>
-        </div>
-        <div class="kpi-sub">Do lançamento do pedido até a finalização (pedidos finalizados)</div>
-      </div>
-
-      <div class="kpi-card accent-green">
-        <div class="kpi-header">
-          <div>
-            <div class="kpi-label">Receita Recorrente</div>
-            <div class="kpi-value">${fmtBRL(kpi.receitaRecorrente)}</div>
-          </div>
-          <div class="kpi-icon-wrap green">↩️</div>
-        </div>
-        <div class="kpi-sub">${fmtPct(kpi.faturamentoTotal > 0 ? kpi.receitaRecorrente/kpi.faturamentoTotal*100 : 0)} do faturamento vindo de clientes recorrentes</div>
-      </div>
-
-      <div class="kpi-card accent-blue">
-        <div class="kpi-header">
-          <div>
-            <div class="kpi-label">Itens Vendidos</div>
-            <div class="kpi-value">${fmtNum(Math.round(kpi.qtdItensTotal))}</div>
-          </div>
-          <div class="kpi-icon-wrap blue">📋</div>
-        </div>
-        <div class="kpi-sub">
-          Total de itens — Peso líq. total: <strong>${kpi.pesoTotal.toLocaleString('pt-BR', {maximumFractionDigits: 1})} kg</strong>
-        </div>
-      </div>
-
-    </div>
-
-    <!-- RANKINGS -->
-    <div class="section-title">🏆 Rankings</div>
-    <div class="cards-grid-2">
-
-      <div class="table-card">
-        <div class="table-card-title">🤝 Top Representantes por Faturamento</div>
-        <div class="ranking-list">
-          ${kpi.rankingRep.map(([nome, val], i) => {
-            const posClass = i === 0 ? 'gold' : i === 1 ? 'silver' : i === 2 ? 'bronze' : '';
-            const maxVal = kpi.rankingRep[0][1];
-            const barW = maxVal > 0 ? Math.round(val / maxVal * 100) : 0;
-            return `
-              <div class="ranking-item">
-                <div class="ranking-pos ${posClass}">${i + 1}</div>
-                <div class="ranking-name" title="${nome}">${shortName(nome, 22)}</div>
-                <div class="ranking-bar-wrap"><div class="ranking-bar" style="width:${barW}%"></div></div>
-                <div class="ranking-val">${fmtBRL(val)}</div>
-              </div>
-            `;
-          }).join('')}
-        </div>
-      </div>
-
-      <div class="table-card">
-        <div class="table-card-title">🏙️ Top Cidades por Faturamento</div>
-        <div class="ranking-list">
-          ${kpi.rankingCid.map(([cidade, val], i) => {
-            const posClass = i === 0 ? 'gold' : i === 1 ? 'silver' : i === 2 ? 'bronze' : '';
-            const maxVal = kpi.rankingCid[0][1];
-            const barW = maxVal > 0 ? Math.round(val / maxVal * 100) : 0;
-            return `
-              <div class="ranking-item">
-                <div class="ranking-pos ${posClass}">${i + 1}</div>
-                <div class="ranking-name">${shortName(cidade, 22)}</div>
-                <div class="ranking-bar-wrap"><div class="ranking-bar" style="width:${barW}%; background: linear-gradient(90deg, var(--orange), var(--orange-light));"></div></div>
-                <div class="ranking-val">${fmtBRL(val)}</div>
-              </div>
-            `;
-          }).join('')}
-        </div>
-      </div>
-
-    </div>
-  `;
-
-  document.getElementById('dashboard').innerHTML = html;
-  document.getElementById('header-period').textContent =
-    kpi.dataMin && kpi.dataMax
-      ? `${fmtDate(kpi.dataMin)} → ${fmtDate(kpi.dataMax)}`
-      : 'Dados carregados';
-}
-
-/* ═══════════════════════════════════════════════
-   LOAD SHEET
-═══════════════════════════════════════════════ */
-
-function buildCSVUrl(raw) {
-  raw = raw.trim();
-
-  // Já é URL de CSV publicado
-  if (raw.includes('output=csv') || raw.includes('.csv')) return raw;
-
-  // URL de edição do sheets → converte para pub CSV
-  // https://docs.google.com/spreadsheets/d/ID/edit...
-  const m = raw.match(/\/spreadsheets\/d\/([\w-]+)/);
-  if (m) {
-    const id = m[1];
-    // Tenta pegar gid se existir
-    const gid = raw.match(/[#&?]gid=(\d+)/);
-    const gidParam = gid ? `&gid=${gid[1]}` : '';
-    return `https://docs.google.com/spreadsheets/d/${id}/pub?output=csv${gidParam}`;
-  }
-
-  return raw; // retorna como está
 }
 
 async function loadSheet() {
   const rawUrl = document.getElementById('sheets-url').value.trim();
   if (!rawUrl) {
-    showStatus('error', 'Por favor, cole a URL do Google Sheets.');
+    showStatus('error', 'Cole a URL.');
     return;
   }
 
   const url = buildCSVUrl(rawUrl);
 
   setLoading(true);
-  showStatus('loading', 'Conectando ao Google Sheets…');
+  showStatus('loading', 'Carregando...');
 
-  try {
-    // PapaParse faz o fetch + parse
-    Papa.parse(url, {
-      download: true,
-      skipEmptyLines: true,
-      complete: (results) => {
-        try {
-          const kpi = processData(results.data);
-          renderDashboard(kpi);
-          showStatus('success', `✅ ${fmtNum(kpi.totalRegistros)} registros carregados com sucesso — ${fmtNum(kpi.totalVendas)} pedidos únicos processados.`);
-        } catch (err) {
-          showStatus('error', 'Erro ao processar dados: ' + err.message);
+  Papa.parse(url, {
+    download: true,
+    skipEmptyLines: true,
+    complete: (results) => {
+      try {
+        console.log('HEADERS:', results.data[0]);
+
+        const kpi = processData(results.data);
+
+        renderDashboard(kpi);
+
+        if (kpi.warnings.length > 0) {
+          showStatus('error', '⚠️ Problemas encontrados: ' + kpi.warnings.join(' | '));
+        } else {
+          showStatus('success', 'Dados carregados com sucesso');
         }
-        setLoading(false);
-      },
-      error: (err) => {
-        showStatus('error', 'Erro ao carregar planilha. Verifique se a URL está publicada publicamente como CSV. Detalhe: ' + err.message);
-        setLoading(false);
+
+      } catch (err) {
+        showStatus('error', 'Erro real: ' + err.message);
       }
-    });
-  } catch (err) {
-    showStatus('error', 'Erro inesperado: ' + err.message);
-    setLoading(false);
-  }
-}
 
-function setLoading(on) {
-  const btn = document.getElementById('btn-load');
-  const icon = document.getElementById('btn-icon');
-  const txt = document.getElementById('btn-text');
-  btn.disabled = on;
-  icon.innerHTML = on ? '<span class="spinner"></span>' : '📥';
-  txt.textContent = on ? 'Carregando…' : 'Carregar';
+      setLoading(false);
+    },
+    error: (err) => {
+      showStatus('error', 'Erro ao acessar planilha: ' + err.message);
+      setLoading(false);
+    }
+  });
 }
-
-function showStatus(type, msg) {
-  const bar = document.getElementById('status-bar');
-  const txt = document.getElementById('status-text');
-  bar.className = 'status-bar show ' + type;
-  txt.textContent = msg;
-}
-
-// Permite pressionar Enter no campo URL
-document.getElementById('sheets-url').addEventListener('keydown', e => {
-  if (e.key === 'Enter') loadSheet();
-});
 </script>
-
-</body>
-</html>
