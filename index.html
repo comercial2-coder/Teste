@@ -1,37 +1,65 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Visão Geral Comercial</title>
-
-<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
-
-<style>
-body { font-family: Arial; padding:20px; background:#f5f5f5; }
-input { width:70%; padding:10px; }
-button { padding:10px 20px; cursor:pointer; }
-#status { margin-top:15px; font-weight:bold; }
-</style>
-</head>
-
-<body>
-
-<h2>Dashboard Comercial</h2>
-
-<input id="sheets-url" placeholder="Cole a URL do Google Sheets (CSV)">
-<button onclick="loadSheet()">Carregar</button>
-
-<div id="status"></div>
-<div id="dashboard"></div>
-
 <script>
+'use strict';
 
-function showStatus(msg, type='black'){
-  const el = document.getElementById('status');
-  el.style.color = type;
-  el.innerText = msg;
+window.onerror = function(msg, url, line) {
+  document.body.innerHTML = '<h2 style="color:red;padding:20px">Erro crítico: ' + msg + ' (linha ' + line + ')</h2>';
+};
+
+/* =========================
+UTILS
+========================= */
+
+function parseDate(str) {
+  if (!str) return null;
+  const d = new Date(str);
+  return isNaN(d) ? null : d;
 }
+
+function fmtNum(v){ return (v||0).toLocaleString('pt-BR'); }
+function fmtBRL(v){ return 'R$ ' + (v||0).toLocaleString('pt-BR',{minimumFractionDigits:2}); }
+
+/* =========================
+PROCESSAMENTO (MINIMO SEGURO)
+========================= */
+
+function processData(rows){
+
+  if (!rows || rows.length < 2) throw new Error('Planilha vazia');
+
+  let total = 0;
+
+  rows.slice(1).forEach(r=>{
+    try{
+      let v = r[5];
+      if(v){
+        v = parseFloat(v.toString().replace(',', '.'));
+        if(!isNaN(v)) total += v;
+      }
+    }catch(e){}
+  });
+
+  return {
+    total,
+    registros: rows.length - 1
+  };
+}
+
+/* =========================
+RENDER
+========================= */
+
+function renderDashboard(kpi){
+  document.getElementById('dashboard').innerHTML = `
+    <div style="padding:20px">
+      <h2>Faturamento: ${fmtBRL(kpi.total)}</h2>
+      <p>Registros: ${fmtNum(kpi.registros)}</p>
+    </div>
+  `;
+}
+
+/* =========================
+LOAD
+========================= */
 
 function buildCSVUrl(raw){
   raw = raw.trim();
@@ -46,48 +74,19 @@ function buildCSVUrl(raw){
   return raw;
 }
 
-function parseDate(str){
-  if(!str) return null;
-  const d = new Date(str);
-  return isNaN(d) ? null : d;
-}
-
-function processData(rows){
-  if(!rows || rows.length < 2) throw new Error('Sem dados');
-
-  const data = rows.slice(1);
-
-  let total = 0;
-
-  data.forEach(r=>{
-    const val = parseFloat((r[5] || "0").replace(",", "."));
-    if(!isNaN(val)) total += val;
-  });
-
-  return {
-    total,
-    registros: data.length
-  };
-}
-
-function renderDashboard(kpi){
-  document.getElementById('dashboard').innerHTML =
-    `<h3>Faturamento: R$ ${kpi.total.toFixed(2)}</h3>
-     <p>Registros: ${kpi.registros}</p>`;
-}
-
 async function loadSheet(){
 
-  const raw = document.getElementById('sheets-url').value;
+  const rawUrl = document.getElementById('sheets-url').value.trim();
 
-  if(!raw){
-    showStatus('Cole a URL', 'red');
+  if(!rawUrl){
+    showStatus('error','Cole a URL');
     return;
   }
 
-  const url = buildCSVUrl(raw);
+  const url = buildCSVUrl(rawUrl);
 
-  showStatus('Testando acesso...', 'blue');
+  setLoading(true);
+  showStatus('loading','Testando acesso...');
 
   try{
 
@@ -100,37 +99,58 @@ async function loadSheet(){
     const text = await response.text();
 
     if(!text || text.length < 10){
-      throw new Error('CSV vazio ou inválido');
+      throw new Error('CSV vazio');
     }
 
-    showStatus('Processando...', 'blue');
+    showStatus('loading','Processando...');
 
-    Papa.parse(text, {
+    Papa.parse(text,{
       skipEmptyLines:true,
+
       complete:(res)=>{
         try{
           const kpi = processData(res.data);
           renderDashboard(kpi);
-          showStatus('OK carregado com sucesso', 'green');
+          showStatus('success','Carregado com sucesso');
         }catch(e){
-          showStatus('Erro nos dados: ' + e.message, 'red');
+          showStatus('error','Erro nos dados: '+e.message);
         }
+        setLoading(false);
       },
+
       error:(err)=>{
-        showStatus('Erro no parse: ' + err.message, 'red');
+        showStatus('error','Erro parse: '+err.message);
+        setLoading(false);
       }
     });
 
   }catch(err){
-    showStatus(
-      'Falha ao acessar: ' + err.message + 
-      ' | Verifique publicação ou bloqueio Google',
-      'red'
-    );
+    showStatus('error','Falha acesso: '+err.message);
+    setLoading(false);
   }
 }
 
-</script>
+/* =========================
+UI
+========================= */
 
-</body>
-</html>
+function setLoading(on){
+  const btn = document.getElementById('btn-load');
+  if(btn) btn.disabled = on;
+}
+
+function showStatus(type,msg){
+  const bar = document.getElementById('status-bar');
+  const txt = document.getElementById('status-text');
+
+  if(!bar || !txt) return;
+
+  bar.className = 'status-bar show ' + type;
+  txt.textContent = msg;
+}
+
+document.getElementById('sheets-url').addEventListener('keydown', e=>{
+  if(e.key === 'Enter') loadSheet();
+});
+
+</script>
