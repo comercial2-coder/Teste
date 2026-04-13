@@ -1,67 +1,50 @@
 <script>
 'use strict';
 
-window.onerror = function(msg, url, line) {
-  document.body.innerHTML = '<h2 style="color:red;padding:20px">Erro crítico: ' + msg + ' (linha ' + line + ')</h2>';
-};
+/* =========================
+ANTI TELA BRANCA
+========================= */
+
+window.addEventListener('error', function(e){
+  document.body.innerHTML = `
+    <div style="padding:30px;font-family:Arial">
+      <h2 style="color:red">Erro crítico no sistema</h2>
+      <p><strong>Mensagem:</strong> ${e.message}</p>
+      <p><strong>Linha:</strong> ${e.lineno}</p>
+    </div>
+  `;
+});
+
+/* =========================
+SAFE HELPERS
+========================= */
+
+function safeGet(id){
+  return document.getElementById(id) || null;
+}
+
+function showStatus(type,msg){
+  const bar = safeGet('status-bar');
+  const txt = safeGet('status-text');
+
+  if(!bar || !txt) return;
+
+  bar.className = 'status-bar show ' + type;
+  txt.textContent = msg;
+}
+
+function setLoading(on){
+  const btn = safeGet('btn-load');
+  if(btn) btn.disabled = on;
+}
 
 /* =========================
 UTILS
 ========================= */
 
-function parseDate(str) {
-  if (!str) return null;
-  const d = new Date(str);
-  return isNaN(d) ? null : d;
-}
-
-function fmtNum(v){ return (v||0).toLocaleString('pt-BR'); }
-function fmtBRL(v){ return 'R$ ' + (v||0).toLocaleString('pt-BR',{minimumFractionDigits:2}); }
-
-/* =========================
-PROCESSAMENTO (MINIMO SEGURO)
-========================= */
-
-function processData(rows){
-
-  if (!rows || rows.length < 2) throw new Error('Planilha vazia');
-
-  let total = 0;
-
-  rows.slice(1).forEach(r=>{
-    try{
-      let v = r[5];
-      if(v){
-        v = parseFloat(v.toString().replace(',', '.'));
-        if(!isNaN(v)) total += v;
-      }
-    }catch(e){}
-  });
-
-  return {
-    total,
-    registros: rows.length - 1
-  };
-}
-
-/* =========================
-RENDER
-========================= */
-
-function renderDashboard(kpi){
-  document.getElementById('dashboard').innerHTML = `
-    <div style="padding:20px">
-      <h2>Faturamento: ${fmtBRL(kpi.total)}</h2>
-      <p>Registros: ${fmtNum(kpi.registros)}</p>
-    </div>
-  `;
-}
-
-/* =========================
-LOAD
-========================= */
-
 function buildCSVUrl(raw){
+  if(!raw) return '';
+
   raw = raw.trim();
 
   if(raw.includes('output=csv')) return raw;
@@ -74,9 +57,68 @@ function buildCSVUrl(raw){
   return raw;
 }
 
+/* =========================
+PROCESSAMENTO SUPER SEGURO
+========================= */
+
+function processData(rows){
+
+  if(!rows || rows.length < 2){
+    return { total:0, registros:0 };
+  }
+
+  let total = 0;
+
+  for(let i=1;i<rows.length;i++){
+    try{
+      let v = rows[i][5];
+
+      if(v){
+        v = parseFloat(v.toString().replace(',', '.'));
+        if(!isNaN(v)) total += v;
+      }
+    }catch(e){
+      console.warn('Erro linha', i);
+    }
+  }
+
+  return {
+    total,
+    registros: rows.length - 1
+  };
+}
+
+/* =========================
+RENDER
+========================= */
+
+function renderDashboard(kpi){
+
+  const dash = safeGet('dashboard');
+  if(!dash) return;
+
+  dash.innerHTML = `
+    <div style="padding:20px">
+      <h2>Faturamento: R$ ${kpi.total.toFixed(2)}</h2>
+      <p>Registros: ${kpi.registros}</p>
+    </div>
+  `;
+}
+
+/* =========================
+LOAD
+========================= */
+
 async function loadSheet(){
 
-  const rawUrl = document.getElementById('sheets-url').value.trim();
+  const input = safeGet('sheets-url');
+
+  if(!input){
+    alert('Campo URL não encontrado');
+    return;
+  }
+
+  const rawUrl = input.value.trim();
 
   if(!rawUrl){
     showStatus('error','Cole a URL');
@@ -86,34 +128,32 @@ async function loadSheet(){
   const url = buildCSVUrl(rawUrl);
 
   setLoading(true);
-  showStatus('loading','Testando acesso...');
+  showStatus('loading','Conectando...');
 
   try{
 
-    const response = await fetch(url);
+    const res = await fetch(url);
 
-    if(!response.ok){
-      throw new Error(`HTTP ${response.status}`);
+    if(!res.ok){
+      throw new Error('HTTP ' + res.status);
     }
 
-    const text = await response.text();
+    const text = await res.text();
 
-    if(!text || text.length < 10){
+    if(!text || text.length < 5){
       throw new Error('CSV vazio');
     }
-
-    showStatus('loading','Processando...');
 
     Papa.parse(text,{
       skipEmptyLines:true,
 
-      complete:(res)=>{
+      complete:(result)=>{
         try{
-          const kpi = processData(res.data);
+          const kpi = processData(result.data);
           renderDashboard(kpi);
-          showStatus('success','Carregado com sucesso');
+          showStatus('success','OK carregado');
         }catch(e){
-          showStatus('error','Erro nos dados: '+e.message);
+          showStatus('error','Erro dados: '+e.message);
         }
         setLoading(false);
       },
@@ -125,32 +165,25 @@ async function loadSheet(){
     });
 
   }catch(err){
-    showStatus('error','Falha acesso: '+err.message);
+    showStatus('error','Erro acesso: '+err.message);
     setLoading(false);
   }
 }
 
 /* =========================
-UI
+INIT SAFE
 ========================= */
 
-function setLoading(on){
-  const btn = document.getElementById('btn-load');
-  if(btn) btn.disabled = on;
-}
+document.addEventListener('DOMContentLoaded', function(){
 
-function showStatus(type,msg){
-  const bar = document.getElementById('status-bar');
-  const txt = document.getElementById('status-text');
+  const input = safeGet('sheets-url');
 
-  if(!bar || !txt) return;
+  if(input){
+    input.addEventListener('keydown', function(e){
+      if(e.key === 'Enter') loadSheet();
+    });
+  }
 
-  bar.className = 'status-bar show ' + type;
-  txt.textContent = msg;
-}
-
-document.getElementById('sheets-url').addEventListener('keydown', e=>{
-  if(e.key === 'Enter') loadSheet();
 });
 
 </script>
